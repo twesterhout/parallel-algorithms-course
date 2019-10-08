@@ -20,10 +20,10 @@ static void help(int argc, char* argv[])
     (void)argc;
     // clang-format off
     fprintf(stderr,
-        "Usage: %s [-h] upper_bound\n"
+        "Usage: %s [-h] min max\n"
         "\n"
-        "Generates all prime numbers up to upper_bound and prints the number of\n"
-        "'scratch-out' operations to stdout.\n", argv[0]);
+        "Checks the Goldbach conjecture for all integers in the range [min, max).\n",
+        argv[0]);
     // clang-format on
 }
 
@@ -57,37 +57,42 @@ int main(int argc, char* argv[])
         goto cleanup;
     }
 
-    if (optind + 1 != argc) {
-        fprintf(stderr, "%s: expected a single argument upper_bound\n",
-                argv[0]);
+    if (optind + 2 != argc) {
+        fprintf(stderr, "%s: expected two arguments: min and max\n", argv[0]);
         status = 1;
         goto cleanup;
     }
-    uint64_t upper_bound;
+    uint64_t min;
     {
-        char* end   = NULL;
-        upper_bound = strtoull(argv[optind], &end, /*base=*/10);
-        if (errno == ERANGE || (upper_bound == 0 && *end != '\0')) {
-            fprintf(stderr, "%s: invalid upper_bound: '%s'\n", argv[0],
-                    argv[optind]);
+        char* end = NULL;
+        min       = strtoull(argv[optind], &end, /*base=*/10);
+        if (errno == ERANGE || (min == 0 && *end != '\0') || min < 3) {
+            fprintf(stderr, "%s: invalid min: '%s'\n", argv[0], argv[optind]);
+            status = 1;
+            goto cleanup;
+        }
+    }
+    uint64_t max;
+    {
+        char* end = NULL;
+        max       = strtoull(argv[optind + 1], &end, /*base=*/10);
+        if (errno == ERANGE || (max == 0 && *end != '\0') || max < min) {
+            fprintf(stderr, "%s: invalid max: '%s'\n", argv[0],
+                    argv[optind + 1]);
             status = 1;
             goto cleanup;
         }
     }
 
-    ex17_reset_scratch_counter();
-    ex17_result_t result;
-    result = ex17_generate_primes_serial(upper_bound);
+    bool result;
+    status = ex17_goldbach(min, max, &result);
 
-    if (result.status != 0) {
-        fprintf(stderr, "ex17_generate_primes_serial() failed: %s\n",
-                strerror(result.status));
-        status = result.status;
+    if (status != 0) {
+        fprintf(stderr, "ex17_goldbach() failed: %s\n", strerror(status));
         goto cleanup;
     }
 
-    fprintf(stdout, "%lu\n", ex17_get_scratch_counter());
-    if (result.primes != NULL) { free(result.primes); }
+    printf("%s\n", result ? "true" : "false");
 
 cleanup:
     return status;

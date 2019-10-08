@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 
 #if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
@@ -27,6 +28,10 @@ typedef struct ex17_result {
 ex17_result_t ex17_generate_primes_serial(ex17_prime_t upper_bound);
 ex17_result_t ex17_generate_primes_parallel(ex17_prime_t upper_bound,
                                             uint64_t     block_size);
+
+void ex17_filter_twins(uint64_t numbers[static 1], uint64_t* size);
+
+int ex17_goldbach(uint64_t min, uint64_t max, bool* result);
 
 #if defined(EX17_COUNTERS)
 void     ex17_reset_scratch_counter(void);

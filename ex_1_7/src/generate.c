@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include <assert.h>
 #include <ctype.h> // isprint
 #include <errno.h>
 #include <stdbool.h>
@@ -14,7 +15,7 @@
 
 static inline int _parse(int argc, char* argv[])
 {
-    return getopt(argc, argv, "hqb:");
+    return getopt(argc, argv, "hqtb:");
 }
 
 static void help(int argc, char* argv[])
@@ -22,11 +23,14 @@ static void help(int argc, char* argv[])
     (void)argc;
     // clang-format off
     fprintf(stderr,
-        "Usage: %s [-q] [-b block_size] upper_bound\n"
+        "Usage: %s [-q] [-t] [-b block_size] upper_bound\n"
         "\n"
         "Generates all prime numbers up to upper_bound and prints them to stdout.\n"
         "If block_size is given, parallel algorithm is used, otherwise primes are\n"
-        "generated using a serial implementation.\n", argv[0]);
+        "generated using a serial implementation.\n"
+        "\n"
+        "-q flag causes output to be supressed. This is useful for benchmarking.\n"
+        "-t flag causes the program to generate twin prime numbers.\n", argv[0]);
     // clang-format on
 }
 
@@ -43,11 +47,13 @@ int main(int argc, char* argv[])
     opterr               = 0;
     bool  help_flag      = false;
     bool  quiet_flag     = false;
+    bool  twins_flag     = false;
     char* block_size_str = NULL;
     for (int c = _parse(argc, argv); c != -1; c = _parse(argc, argv)) {
         switch (c) {
         case 'b': block_size_str = optarg; break;
         case 'q': quiet_flag = true; break;
+        case 't': twins_flag = true; break;
         case 'h': help_flag = true; break;
         case '?':
             if (rank == 0) {
@@ -123,11 +129,21 @@ int main(int argc, char* argv[])
                     strerror(result.status));
         }
         status = result.status;
+        MPI_Abort(MPI_COMM_WORLD, status);
         goto cleanup;
     }
     if (!quiet_flag && rank == 0) {
-        for (uint64_t i = 0; i < result.size; ++i) {
-            printf("%lu\n", result.primes[i]);
+        if (twins_flag) {
+            ex17_filter_twins(result.primes, &result.size);
+            assert(result.size % 2 == 0);
+            for (uint64_t i = 0; i < result.size; i += 2) {
+                printf("%lu %lu\n", result.primes[i], result.primes[i + 1]);
+            }
+        }
+        else {
+            for (uint64_t i = 0; i < result.size; ++i) {
+                printf("%lu\n", result.primes[i]);
+            }
         }
     }
     if (result.primes != NULL) { free(result.primes); }

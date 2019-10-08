@@ -685,3 +685,51 @@ EX17_EXPORT ex17_result_t ex17_generate_primes_parallel(prime_t  upper_bound,
 workspace_construction_failed:
     return result;
 }
+
+EX17_EXPORT void ex17_filter_twins(uint64_t numbers[static 1], uint64_t* size)
+{
+    assert(numbers != NULL && size != NULL);
+    uint64_t* first = numbers;
+    uint64_t* next  = numbers;
+    while (next != numbers + *size) {
+        uint64_t const n = *(next++);
+        if (n + 2 == *next) {
+            *(first++) = n;
+            *(first++) = *next;
+        }
+    }
+    *size = (uint64_t)(first - numbers);
+}
+
+EX17_EXPORT int ex17_goldbach(uint64_t min, uint64_t max, bool* result)
+{
+    if (min > max) { return EINVAL; }
+    else if (min == max) {
+        *result = true;
+        return 0;
+    }
+    min += min % 2; // Make sure min is even
+
+    ex17_result_t r = ex17_generate_primes_serial(max - 2);
+    if (r.status != 0) { return r.status; }
+
+    ex17_bb_t block;
+    int       status = ex17_bb_construct(&block, min, (max - min) / 2);
+    if (status != 0) { goto block_construction_failed; }
+
+    for (uint64_t i = 0; i < r.size && r.primes[i] <= max / 2; ++i) {
+        for (uint64_t j = i; j < r.size; ++j) {
+            uint64_t sum = r.primes[i] + r.primes[j];
+            if (sum >= max) { break; }
+            if (sum >= min) { _clear_bit(block.data, (sum - min) / 2); }
+        }
+    }
+
+    *result =
+        ex17_bb_find_next(&block, block.first) == block.first + block.size;
+    ex17_bb_destruct(&block);
+
+block_construction_failed:
+    if (r.primes != NULL) { free(r.primes); }
+    return status;
+}
