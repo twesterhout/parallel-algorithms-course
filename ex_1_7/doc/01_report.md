@@ -264,7 +264,7 @@ have time to implement):
 
 As requested in the assignment, the following subsections contain copy-pasted
 code. It is suggested, however, Github repository
-[](https://github.com/twesterhout/parallel-algorithms-course) is used to browse
+`https://github.com/twesterhout/parallel-algorithms-course` is used to browse
 the code and all helper scripts.
 
 ## `include/ex17.h`
